@@ -50,7 +50,6 @@ struct Chromosome::ChromosomeData{
  */	
 	Context context;
 // Contains the chromomsome's SOO, SOC, population, etc.
-	
 	vector<Segment> chromosomeSegments;
 // Vector of chromosome segments, each of which is a pair of floats
 	shared_ptr < ARGNode > descendant;
@@ -219,6 +218,7 @@ Context Chromosome::getContext() {
 **/
 	return chromData->context;
 }
+
 
 vector<Segment> Chromosome::getSegmentVector(){
 /**

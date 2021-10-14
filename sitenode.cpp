@@ -1,10 +1,7 @@
 /*
  *  siteNode.cpp
- *
  *  Created by Mark Kirkpatrick on 7/28/08.
- *
  *	See "siteNode.h" for documentation.
- *
  */
 
 #include <iostream>
@@ -16,15 +13,11 @@
 #include "argnode.h"
 #include "ran_mk.h"
 
-
-
 SiteNode::SiteNode()	// Null constructor
 {
 }
 
-
-
-SiteNode::SiteNode(double maleMutRatio, double sitePos, shared_ptr < ARGNode > argRoot)		// The typical constructor
+SiteNode::SiteNode(double sitePos, shared_ptr < ARGNode > argRoot)		// The typical constructor
 //
 // Constructs the gene tree for a site at chromosome position sitePos that descends from the ARG node *argRoot
 // and that has ancestral site node *ancSiteNode.  To construct the gene tree from the root of its ARG,
@@ -44,13 +37,13 @@ SiteNode::SiteNode(double maleMutRatio, double sitePos, shared_ptr < ARGNode > a
 	// For debugging:
 	//	if(argSiteRoot != argRoot)
 	//		cout << "    (Skipped to node " << argSiteRoot->getNodeNumber() << ")" << endl;
-
 	// Set the basic private data:
 	//
 	sitePosition = sitePos;
 	nodeNumber = argSiteRoot->getNodeNumber();
 	time = argSiteRoot->getTime();
 	context = argSiteRoot->getContext();
+ tips = argSiteRoot->getTips();
 
 	// Set the descendant nodes:
 	//
@@ -60,27 +53,19 @@ SiteNode::SiteNode(double maleMutRatio, double sitePos, shared_ptr < ARGNode > a
 		if(siteQuery(sitePos, argSiteRoot->getDescendantSegmentVector(i)) )				// descendant[i] of *argSiteRoot is a carrier for sitePosition, 
 		{
 			shared_ptr<SiteNode> d;
-			d.reset(new SiteNode(maleMutRatio, sitePos, argSiteRoot->getDescendantNode(i)));
+			d.reset(new SiteNode(sitePos, argSiteRoot->getDescendantNode(i)));
 			descendant.push_back(d);															//	so set that node as a descendant of this node and make a 
 		}																						//	new SiteNode for it, which then recursively descends down that 
-																				//	branch of the gene tree.
-		totaltime = 0; // ccd. initial totaltime
-	generateTotalTime(maleMutRatio,totaltime); //ccd, calculate totaltime
-
-//cout << "male mut Ratio = " << maleMutRatio << endl;
-//cout << "total time = " << totaltime << endl;
-
+																								//	branch of the gene tree.
+	totaltime = 0; // ccd. initial totaltime
+	generateTotalTime(totaltime); //ccd, calculate totaltime
 } // end SiteNode::SiteNode
-
-
 
 SiteNode::~SiteNode()		// Destructor
 {
 	// For debugging:
 	//	cout << "  SiteNode::~SiteNode called for node " << nodeNumber << endl;
 }
-
-
 
 vector<Base> SiteNode::mutate_jc(Base base0, double mu, double t)
 //
@@ -114,6 +99,77 @@ vector<Base> SiteNode::mutate_jc(Base base0, double mu, double t)
 
 
 
+void SiteNode::snpDescendants(vector<Base> & myOutSeq)
+//	
+//  usage: snpDescendants( double pick ); pick = randreal()*totaltime;
+//	Puts mutations on the descendant branches of this node (that is, sets the values of the vector baseState
+//	  in the descendant nodes), given base0 as the base state at the ancestral node, mu as the mutation rate
+//
+{
+	baseState.push_back( A );//set to A
+	double myPick = randreal()*totaltime;
+	
+/** debug */
+//cout << myPick << " myPick " << endl;	
+	
+	double y = 0;
+	
+	snpPut(myPick, y, myOutSeq);		// Descend gene tree recursively to that descendant and repeat
+	
+}
+
+void SiteNode::snpPut(double myPick, double& y, vector<Base> & myOutSeq)
+{		
+		if(descendant.size() == 0){
+			myOutSeq[getNodeNumber()] = getBaseState();
+
+		};
+	for(UINT iDesc = 0; iDesc < descendant.size(); iDesc++)	// Loop through the branches descending from this node
+	{
+		descendant[iDesc]->addBaseState( getBaseState() );
+		if( y < myPick )
+		{	
+			y += time - descendant[iDesc]->getTime();
+			if( y >= myPick)
+			{
+				descendant[iDesc]->addBaseState( C ); // add C to basevec
+				/** debug */
+
+			}
+		};
+		descendant[iDesc]->snpPut(myPick, y,myOutSeq);		// Descend gene tree recursively to that descendant and repeat
+	}
+}
+
+set<int> SiteNode::getTips()	// Return the identifier number of this node
+{
+	return(tips);
+}
+
+
+void SiteNode::generateSubTreeLength(set<int> myTips, double &x)
+//
+// for given tree tips, return the total branch length of subtree with and only with those tips
+// However, must manually make sure that the tips are descedents of the Node been queried
+//
+{
+  set<int>::iterator it;
+
+ set<int> myintersection;
+ set_intersection( tips.begin(), tips.end(),myTips.begin(),myTips.end(),std::inserter(myintersection,myintersection.begin()));
+	for(UINT iDesc = 0; iDesc < descendant.size(); iDesc++)	// Loop through the branches descending from this node
+	{
+  set<int> myintersection_des;
+  set<int> dtips = descendant[iDesc]->getTips();
+  set_intersection( dtips.begin(),dtips.end(),myTips.begin(),myTips.end(),std::inserter(myintersection_des,myintersection_des.begin()));
+		if( myintersection_des.size() > 0   )
+  {
+		 if( myTips.size() > myintersection_des.size() ){x += time - descendant[iDesc]->getTime(); }
+		 descendant[iDesc]->generateSubTreeLength(myTips,x);		// Descend gene tree recursively to that descendant and repeat
+  }
+	}
+}
+
 void SiteNode::mutateDescendants(Base base0, double mu)
 //
 //	Puts mutations on the descendant branches of this node (that is, sets the values of the vector baseState
@@ -136,65 +192,6 @@ void SiteNode::mutateDescendants(Base base0, double mu)
 
 
 
-void SiteNode::snpDescendants(double m, vector<Base> & myOutSeq)
-//	
-//  usage: snpDescendants( double pick ); pick = randreal()*totaltime;
-//	Puts mutations on the descendant branches of this node (that is, sets the values of the vector baseState
-//	  in the descendant nodes), given base0 as the base state at the ancestral node, mu as the mutation rate
-//
-{
-	baseState.push_back( A );//set to A
-	double myPick = randreal()*totaltime;
-	
-/** debug */
-//cout << myPick << "-myPick " << totaltime << "-totaltime" << maleMutRatio << "-maleR" << endl;	
-	
-	double y = 0;
-	
-	snpPut(m, myPick, y, myOutSeq);		// Descend gene tree recursively to that descendant and repeat
-	
-}
-
-void SiteNode::snpPut(double m, double myPick, double& y, vector<Base> & myOutSeq)
-{		
-		if(descendant.size() == 0){
-			myOutSeq[getNodeNumber()] = getBaseState();
-//		cout << "\t" << getNodeNumber() << "\t" <<  getBaseState() << "\t" << getContext().Sexsite << "\t" <<  getContext().siteA << endl;
-		};
-	for(UINT iDesc = 0; iDesc < descendant.size(); iDesc++)	// Loop through the branches descending from this node
-	{
-		descendant[iDesc]->addBaseState( getBaseState() );
-		if( y < myPick )
-		{	
-			if (getContext().Sexsite == 1){ 
-				y += m*(time - descendant[iDesc]->getTime());
-			}else
-			{
-				y += time - descendant[iDesc]->getTime();
-			};
-//cout << y << " passed time " << m << "~male mut ratio ";			
-			if( y >= myPick)
-			{
-				descendant[iDesc]->addBaseState( C ); // add C to basevec
-				/** debug */
-//cout << " on Node " << descendant[iDesc]->getNodeNumber() << " myPick " << myPick << endl;	
-			}
-		};
-		descendant[iDesc]->snpPut( m,myPick, y,myOutSeq);		// Descend gene tree recursively to that descendant and repeat
-	}
-}
-
-
-void SiteNode::addBaseState(Base baseA)
-//
-// Sets baseState (the vector of ancestral base states) equal to baseVec
-//
-{
-	baseState.push_back( baseA );
-}
-
-
-
 void SiteNode::putBaseStates(vector<Base> baseVec)
 //
 // Sets baseState (the vector of ancestral base states) equal to baseVec
@@ -203,7 +200,13 @@ void SiteNode::putBaseStates(vector<Base> baseVec)
 	baseState = baseVec;
 }
 
-
+void SiteNode::addBaseState(Base baseA)
+//
+// Sets baseState (the vector of ancestral base states) equal to baseVec
+//
+{
+	baseState.push_back( baseA );
+}
 
 int SiteNode::getNodeNumber()
 {
@@ -216,6 +219,7 @@ double SiteNode::getTime()
 {
 	return(time);
 }
+
 
 double SiteNode::getTotalTime()
 {
@@ -289,7 +293,7 @@ void SiteNode::outputTree()
 	
 	if(descendant.size() == 0){
 		cout << "   Terminal node" << endl;
-		cout << " node " << getNodeNumber() << " base info." << getBaseState() << endl;//ccd
+		cout << " node " << nodeNumber << " base info." << baseState.size() << endl;//ccd
 	}
 	else
 	{
@@ -322,7 +326,6 @@ void SiteNode::outputTreeV3( vector<Base> * myXseq, vector<Base> * myYseq )//tem
 		else{
 			myYseq->push_back(getBaseState());
 		}
-		//cout << "\t" << getNodeNumber() << "\t" <<  getBaseState() << "\t" << getContext().Sexsite << "\t" <<  getContext().siteA << endl;
 
 	};
 	for(UINT i=0; i < descendant.size(); i++)
@@ -330,25 +333,16 @@ void SiteNode::outputTreeV3( vector<Base> * myXseq, vector<Base> * myYseq )//tem
 }
 
 
-
-void SiteNode::generateTotalTime(double m, double &x)
+void SiteNode::generateTotalTime(double &x)
 /*
  * Get the total length of the descendant branches of the tree rooted by this node
  * 
  */
 {	
-//	cout << "x inside generateTotalTime " << x <<endl;
 	for(UINT iDesc = 0; iDesc < descendant.size(); iDesc++)	// Loop through the branches descending from this node
 	{
-		if (getContext().Sexsite == 1){
-			x += m*(time - descendant[iDesc]->getTime());
-			
-		}else
-		{
-			x += time - descendant[iDesc]->getTime();
-		};
-		descendant[iDesc]->generateTotalTime(m,x);		// Descend gene tree recursively to that descendant and repeat
+		x += time - descendant[iDesc]->getTime();
+		descendant[iDesc]->generateTotalTime(x);		// Descend gene tree recursively to that descendant and repeat
 	}
 	
 }
-

@@ -29,6 +29,8 @@ public:
 	vector<shared_ptr<Chromosome> > getChromVec();
 	shared_ptr<ParameterData> getpData();
 	void setNsites(vector<double>);
+	vector<double> getScalingFactor();
+	vector<double> getEpoBreakpoints();	
 	
 };
 
@@ -40,15 +42,20 @@ struct Parameters::ParameterData{
 	vector<double> mig_prob;
 	int nRuns;
 	double mutation_rate;
+ double recombination_rate; 
 	vector<double> ages;
 	double maleRecRatio;
-	double malePopRatio;// sex ratio
-	double maleMutRatio;	
 	double freqA_inx;
 	double freqA_iny;
+ double preY_afreq;
 	double Sexsite_pos;
-    double preY_afreq;
 	double siteA_pos;
+ int initNchrs;
+ int initNx;
+ double myEpsi;
+	int nEpochs; //Number of epochs
+	vector<double> epoch_breaks; // Vector with the breakpoints between epochs, with timeline looking like: [0,t_1,...,1)
+	vector<double> scaling_factors; // Vector with scaling pop sizes for t = 0,...,n
 	int avg;
 	vector<shared_ptr<Chromosome> >initChr;		// vector of initial carriers
 	vector<double> neut_site;			// the original version of Nsites take a vector of doubles; ccd 10/10/2014

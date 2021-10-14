@@ -38,6 +38,10 @@
 
 #include <vector>
 	using std::vector;
+ 
+#include <set>
+ using std::set; 
+
 	
 #include <boost/shared_ptr.hpp>
 using boost::shared_ptr;
@@ -72,6 +76,7 @@ class ARGNode
 	int nodeNumber;					// Identifier number of this node
 	double time;						// Time at which this node occurred
 	Context context;				// Context at this node
+ set<int> tips; // the tips from this node
 	vector<ARGNode*> ancestor;		// Vector of pointers to ancestral ARG nodes
 	vector<Branch> descendant;		// Vector of branches descending from this ARG node;  these structures
 									//	have pointers to the descendant ARG nodes and the chromosome segments
@@ -103,6 +108,7 @@ class ARGNode
 // Output data for this node:
 	void outputNode();								// Prints out the node's data
 	void outputARG();								// Prints out the ARG descending from this node 
+ set<int> getTips();	
 };
 
 

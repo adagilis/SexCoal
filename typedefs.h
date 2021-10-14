@@ -44,7 +44,7 @@ struct Context
 {
 public:
 	//Sex soo;	// Sex-of-origin, i.e. the Sex of the parent from whom the chromosome was inherited
-	//int soc;	// Sex-of-carrier, i.e. the Sex of the individual carrying the chromosome
+	//Sex soc;	// Sex-of-carrier, i.e. the Sex of the individual carrying the chromosome
 	int	pop;	// Population number
 	int siteA; // state of site A = [0,1]
 	int Sexsite;
@@ -57,15 +57,13 @@ public:
 		if(pop<other.pop) return true;
 		if(pop==other.pop && Sexsite<other.Sexsite) return true;
 		if(pop==other.pop && Sexsite==other.Sexsite && siteA < other.siteA) return true;
-		//if(pop==other.pop && Sexsite==other.Sexsite && siteA == other.siteA && soc < other.soc) return true;
 		return false; }
 
 	bool operator==(const Context& other) const    {
 		if(pop==other.pop && siteA==other.siteA && Sexsite == other.Sexsite) return true;
-//		if(pop==other.pop && siteA==other.siteA && Sexsite == other.Sexsite && soc == other.soc) return true;
 	return false; }
  
-    void setNew(const int D, const int E, const int C) {pop=D; Sexsite=E; siteA=C;}
+    void setNew(const int D, const int E, const int C) {pop=D; Sexsite=E; siteA=C; }
 
 	
 };

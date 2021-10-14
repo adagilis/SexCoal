@@ -25,25 +25,16 @@ ARGNode::ARGNode()	// Null constructor.  Used to make an (undefined) ancestor fo
 {
 }
 
-//ARGNode::ARGNode(int dummy)	// dummy constructor.  Used to make a descendant for a terminal ARGNode
-//{
-//	nodeNumber=-1;
-//	time=-1;
-//	
-//}
 
 ARGNode::ARGNode(int nNode, shared_ptr<Chromosome> chr)
 //
 // Constructor for a terminal node.  The segments carried by this node are
 //	stored in descendant.segmentVec[0]
 {	
-//	shared_ptr < ARGNode > first;
-//	first.reset(new ARGNode(0));
 	nodeNumber = nNode;
 	time = 0;
 	context = chr->getContext();
-//	Branch branch(first, chr->getSegmentVector());
-//	descendant.push_back( branch );
+ tips.insert(nNode);
 }
 
 
@@ -56,11 +47,11 @@ ARGNode::ARGNode(int nNode, shared_ptr<Chromosome> chr, const double t)
 	nodeNumber = nNode;
 	time = t;
 	context = chr->getContext();	
-		
+	tips = chr->getDescendant()->getTips();
+ 	
 	Branch branch (chr->getDescendant(), chr->getSegmentVector() );
 	descendant.push_back( branch );	
 	chr->getDescendant()->addAncestor(this);
-	//descendant.resize(2);  // this line was removed by RG on Mar16.09. Was causing problems in runtime. Why would we need to resize?
 }
 
 
@@ -81,23 +72,22 @@ ARGNode::ARGNode(int nNode, shared_ptr<Chromosome> chr1, shared_ptr<Chromosome> 
 	descendant.push_back( branch2 );
 	chr1->getDescendant()->addAncestor(this);
 	chr2->getDescendant()->addAncestor(this);
+ 
+ set<int> tips1 = chr1->getDescendant()->getTips();
+ set<int> tips2 = chr2->getDescendant()->getTips();
+ set_union( tips1.begin(), tips1.end(), tips2.begin(), tips2.end(),std::inserter(tips,tips.begin()));
 }
 
 
 
 ARGNode::~ARGNode()	// Destructor
 {
-	// For debugging:
-	//	cout << "  ARGNode::~ARGNode: Deleting node " << nodeNumber << endl;
 }
 
 
 
 void ARGNode::addAncestor(ARGNode * ancNode)	// Add ancNode as an ancestral node
 {
-	// For debugging:
-	//	cout << "  ARGNode::addAncestor: Adding node " << ancestor[nAncestors]->getNodeNumber() << 
-	//			" as ancestor " << nAncestors << " of node " << nodeNumber << endl;
 
 	ancestor.push_back( ancNode );
 	if(ancNode->getTime() < time)
@@ -114,9 +104,6 @@ void ARGNode::addDescendant(shared_ptr < ARGNode >descNode, vector<Segment> segV
 //	Also sets the current node as the ancestor of that descendant.
 //
 
-	// For debugging:
-	//	cout << "  ARGNode::addDescendant: Adding node "<< descendant[nAncestors]->getNodeNumber() << 
-	//			" as descendant " << nDescendants << " of node " << nodeNumber << endl;
 
 	if(descNode->getTime() > time)
 		cout << endl << ">>>WARNING: ARGNode::addDescendant: descendant at time " << descNode->getTime() << 
@@ -127,6 +114,12 @@ void ARGNode::addDescendant(shared_ptr < ARGNode >descNode, vector<Segment> segV
 	descNode->addAncestor(this);				// Set the ancestor of descNode equal to this node
 }
 	
+
+set<int> ARGNode::getTips()	// Return the identifier number of this node
+{
+	return(tips);
+}
+
 
 
 int ARGNode::getNodeNumber()	// Return the identifier number of this node
@@ -159,8 +152,6 @@ int ARGNode::getNAncestors()	// Return the number of ancestral nodes from this n
 
 ARGNode* ARGNode::getAncestor(UINT i)	// Get ancestral node i
 {
-	// For debugging:
-	//	cout << "  ARGNode::getAncestor: Getting ancestor[" << i << "] of node " << nodeNumber << endl;
 
 	if(i>ancestor.size()-1)		// Could handle this error more gracefully?
 	{
@@ -182,8 +173,6 @@ int ARGNode::getNDescendants()	// Return the number of descendant nodes from thi
 
 shared_ptr<ARGNode> ARGNode::getDescendantNode(int i)	// Get descendant ARG node i
 {
-	// For debugging:
-	//	cout << "   ARGNode::getDescendant:  Getting descendant[" << i << "]..." << endl;
 
 	if(i > descendant.size())	// Can we handle this error more gracefully?
 	{
@@ -201,8 +190,6 @@ vector< Segment > ARGNode::getDescendantSegmentVector(int i)
 // Get the vector of chromosome segments corresponding to the branch leading to descendant i
 //
 {
-	// For debugging:
-	//	cout << "     ARGNode::getDescendantSegmentList:  Getting descendant segment list " << i << "..." << endl;
 
 	if(i > descendant.size())		// Is there a better way to handle this error?
 	{

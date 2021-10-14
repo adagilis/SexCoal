@@ -61,11 +61,12 @@ public:
 	int migrateEvent(vector < vector< double> >& mig_prob, vector<double>& rate, double total);
 	int coalesceEvent(vector<double>& rate, double total);
 	int recombineEvent(vector<double>& rate, double total, bool insideSA);
-	int simulateGeneration(vector < vector <double> > & mig_prob);
+	int simulateGeneration(double recombinationRate, vector < vector <double> > & mig_prob);
 	int migratePoisson(vector < vector< double> >& mig_prob);
 	int coalescePoisson();
 	int recombinePoisson();
-    int timePeriod(double waiting);
+	int checkEpoch(double waiting);
+    	int timePeriod(double waiting);
 	void mergeContext(bool siteORsex);
 	void siteAfreqUpdate();
     void yAgefreqUpdate();
@@ -74,7 +75,6 @@ public:
 	Context randCtxBySex(Context c);
 	vector<double> getFreqbyPop(Context c);
 	//ccd
-	double getMaleMutRatio();
 	vector<double> getRecombBreakpoints();
 	vector< pair<double, shared_ptr < ARGNode > > >& getOutputSegments();
 //	vector<int> getNonEmptyChrsNumber();
@@ -84,6 +84,7 @@ public:
 struct World::WorldData		// Structure with the private data for World, accessed by an opaque pointer
 {
 	double generation;								// Generation number, starting at 0
+	int current_epoch;								// Current epoch, starting at 0
 	UINT nPops;										// Number of populations in World
 	UINT nClust;
 	vector<int> nChromos;	
@@ -96,9 +97,9 @@ struct World::WorldData		// Structure with the private data for World, accessed 
     double preY_afreq;
 	double siteA_pos;
 	double maleRecRatio;
-	double malePopRatio;// sex ratio
-	double myYnumbRatio;
-	double maleMutRatio;	
+	int nEpochs; //Number of epochs
+	vector<double> epoch_breaks; // Vector with the breakpoints between epochs, with timeline looking like: [0,t_1,...,1)
+	vector<double> scaling_factors;
 	vector<double> freq;
 	vector<double> totalRecPairs;
     vector<double> totalNoRecPairs;

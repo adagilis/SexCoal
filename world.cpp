@@ -47,73 +47,59 @@ World::World(shared_ptr<Parameters::ParameterData> p){
 	worldData.reset(new WorldData);
 	worldData->carriers.reset( new vector < vector< shared_ptr<Chromosome> > > );
 	worldData->generation = 0;
+	worldData->current_epoch = 0;
 	worldData->nPops = nPops;
 	worldData->nClust = nClust;
-	
-	worldData->maleRecRatio= p->maleRecRatio;//different recombination rate
-	worldData->malePopRatio = p->malePopRatio;// sex ratio
-	worldData->myYnumbRatio = 0.5*worldData->malePopRatio/(worldData->malePopRatio + 1);
-	worldData->maleMutRatio = p->maleMutRatio;// different mutation rate
-
-
-	
+	worldData->maleRecRatio= p->maleRecRatio;
 	worldData->Sexsite_pos=p->Sexsite_pos;
 	worldData->siteA_pos=p->siteA_pos;
-	
-	
-	worldData->recomb_breakpoints.push_back(p->neut_site.at(0));//assuming just one site per run
-	
+
+ 
+ worldData->recomb_breakpoints.push_back(p->myEpsi);
+ worldData->recomb_breakpoints.push_back(p->siteA_pos + p->myEpsi);
+ //worldData->LeftTotalSegSize = (p->initChr.size()-1)*(1-4*0.001);
+     
+	worldData->nEpochs = p->nEpochs;
+	worldData->epoch_breaks = p->epoch_breaks;
+	worldData->scaling_factors = p->scaling_factors;
+ 
 	worldData->freqA_inx= p->freqA_inx;
 	worldData->freqA_iny= p->freqA_iny;
-    worldData->preY_afreq= p->preY_afreq;
-    worldData->ages = p->ages;
-    worldData->ageCheck=false;
-    if(worldData->ages[0]==0) worldData->ageCheck = true;
-    
-  	// Copy the population sizes and resize vectors to the number of contexts:
-	//
+ worldData->preY_afreq= p->preY_afreq;
+ worldData->ages = p->ages;
+ worldData->ageCheck=false;
+ if(worldData->ages[0]==0) worldData->ageCheck = true;
+ 
+ // Copy the population sizes and resize vectors to the number of contexts:
 	worldData->carriers->resize(nClust);
 	worldData->nChromos.resize(nClust);
 	worldData->freq.resize(nClust);
-    worldData->popSize=p->popSizeVec;
-    
-	
+ worldData->popSize=p->popSizeVec;
+ 
 	for( cluster_t::iterator iter = cluster.begin(); iter != cluster.end(); ++iter ) {
         
 		UINT popID=(*iter).first.pop;
 		UINT siteA=(*iter).first.siteA;
 		UINT Sexsite= (*iter).first.Sexsite;
-		double size=0;
-		
-			if(siteA==1 && Sexsite==1) {
-				size=p->freqA_iny *worldData->myYnumbRatio* (double)worldData->popSize.at(popID);
-	            //		cout<<"size of ("<<Sexsite<<siteA<<") = "<<size<<'\n';
-			}
-			else if(siteA==1 && Sexsite==0) {
-				size=p->freqA_inx *(1-worldData->myYnumbRatio)* (double)worldData->popSize.at(popID);
-	            //	cout<<"size of ("<<Sexsite<<siteA<<") = "<<size<<'\n';
-			}
-	        
-			else if(siteA==0 && Sexsite==1) {
-				size= (1-p->freqA_iny) * worldData->myYnumbRatio *(double)worldData->popSize.at(popID);
-	            //		cout<<"size of ("<<Sexsite<<siteA<<") = "<<size<<'\n';
-	        }
-	        
-	        else if(siteA==0 && Sexsite==0) {
-				size=(1-p->freqA_inx)* (1-worldData->myYnumbRatio) * (double)worldData->popSize.at(popID);
-	            //		cout<<"size of ("<<Sexsite<<siteA<<") = "<<size<<'\n';
-	        }
-	        
-	    size = size * 0.25 * (worldData->malePopRatio + 1) * (worldData->malePopRatio + 1) /worldData->malePopRatio;
-		worldData->nChromos[iter->second] = size ;
-        //		cout<<"nChromos of ("<<Sexsite<<siteA<<") = "<<worldData->nChromos[iter->second]<<'\n';
-        
-		worldData->freq.at(iter->second) = size/ (double) worldData->popSize.at(popID);
-        
-	}
+		double size;
+		if(siteA==1 && Sexsite==1) {
+			size=p->freqA_iny *0.25* (double)worldData->popSize.at(popID);
+ 	}
+		else if(siteA==1 && Sexsite==0) {
+			size=p->freqA_inx *0.75* (double)worldData->popSize.at(popID);
+ 	}
+ 	else if(siteA==0 && Sexsite==1) {
+			size= (1-p->freqA_iny) * 0.25 *(double)worldData->popSize.at(popID);
+  }
+  else if(siteA==0 && Sexsite==0) {
+			size=(1-p->freqA_inx)* 0.75 * (double)worldData->popSize.at(popID);
+  }
+ 	worldData->nChromos[iter->second] = size ;
+ 	worldData->freq.at(iter->second) = size/ (double) worldData->popSize.at(popID);
+ }
     
 	calcTotalRecPairs();
-    calcTotalNoRecPairs();
+ calcTotalNoRecPairs();
 	
 	shared_ptr< ARGNode > nulle ;
 	
@@ -159,16 +145,13 @@ World::World(shared_ptr<Parameters::ParameterData> p){
 } // End constructor for World
 
 
-
 World::~World(){
 	DBG("Population:: Destructing...")
 }
 
 
-
 bool World::simulationFinished(){
-	
-//	if( worldData->LeftTotalSegSize <= 0 || totalNCarriers()==1) return true;
+ 
 	if (worldData->recomb_breakpoints.size() == 0) return true;
 	return false;
 }
@@ -184,11 +167,13 @@ UINT World::siteNcarriers(int siteA){
 	UINT total = 0;
 	for( cluster_t::iterator iter = cluster.begin(); iter != cluster.end(); ++iter ) {
 		if (siteA==(*iter).first.siteA)
-            total = worldData->carriers->at((*iter).second).size() +total;
+   total = worldData->carriers->at((*iter).second).size() +total;
 	}
 	return total;
 	
 }
+
+
 UINT World::popNcarriers(int pop){
 	
 	UINT total = 0;
@@ -199,10 +184,9 @@ UINT World::popNcarriers(int pop){
 	return total;
 	
 }
+
+
 UINT World::totalNCarriers(){
-    //
-    // Returns the total number of carriers in the world
-    //
 	UINT total = 0;
 	for(UINT i = 0; i < worldData->nClust; i++)
 	{	total = worldData->carriers->at(i).size() +total;
@@ -226,11 +210,9 @@ void World::makecluster (int nPops){
 	for (int i=0; i<nPops; ++i){	//loop through populations
 		for (int k=0; k < 2; ++k){ //loop through Sex determining sites (0=X, 1=Y)
 			for (int j=0; j < 2; ++j){	//loop through alleles in siteA
-                
-					Context c(i, k, j);
-					cluster[c]=iter;
-					++iter;
-				
+				Context c(i, k, j);
+				cluster[c]=iter;
+				++iter;
 			}
 		}
 	}
@@ -251,20 +233,13 @@ vector<double> World::getFreqbyPop(Context c){
 	return freqs;
 }
 
-
 vector<double> World::getRecombBreakpoints(){
 	return worldData->recomb_breakpoints;
 }
 
-double World::getMaleMutRatio(){
-		return worldData->maleMutRatio;
-}
-
-
 vector< pair<double, shared_ptr < ARGNode > > >& World::getOutputSegments(){
 	return worldData->outputSegments;
 }
-
 
 Context World::randCtx(int pop){
 	double draw = randreal(0, 1);
@@ -284,9 +259,8 @@ Context World::randCtx(int pop){
 }
 
 Context World::randCtxBySex(Context c){
-    
-	double f= 1-worldData->myYnumbRatio;
-	if (c.Sexsite==1)f=worldData->myYnumbRatio;
+	double f= 0.75;
+	if (c.Sexsite==1)f=0.25;
 	
 	double draw = randreal(0, f);
 	double total = 0;
@@ -303,17 +277,13 @@ Context World::randCtxBySex(Context c){
 }
 
 void World::calcTotalRecPairs (){
-    RCDBG("From calcTotalRecPairs")
-    
-    worldData->totalRecPairs.clear();
+ RCDBG("From calcTotalRecPairs")
+ worldData->totalRecPairs.clear();
 	worldData->totalRecPairs.resize(worldData->nClust);
 	worldData->parents.clear();
-    worldData->parents.resize(worldData->nClust);
-    
-    bool preY= worldData->ages[1]==1 && worldData->ages[0]<worldData->generation;
-    
-    for( cluster_t::iterator target = cluster.begin(); target != cluster.end(); ++target ) {
-		
+ worldData->parents.resize(worldData->nClust);
+ bool preY= worldData->ages[1]==1 && worldData->ages[0]<worldData->generation;
+ for( cluster_t::iterator target = cluster.begin(); target != cluster.end(); ++target ) {
 		int tpop = target->first.pop;
 		int tA = target->first.siteA;
 		int tS = target->first.Sexsite;
@@ -324,8 +294,8 @@ void World::calcTotalRecPairs (){
             
             Context x(tpop, 0, tA);
             Context y(tpop, 1, tA);
-            double aInX = worldData->freq.at(cluster[x])/(1-worldData->myYnumbRatio);
-            double aInY = worldData->freq.at(cluster[y])/worldData->myYnumbRatio;
+            double aInX = worldData->freq.at(cluster[x])/0.75;
+            double aInY = worldData->freq.at(cluster[y])/0.25;
             
             double freqXinM=0.5;
            
@@ -405,7 +375,7 @@ void World::calcTotalRecPairs (){
                 r_carr= target->first;
                 l_carr= target->first;
                 
-                double cross3 = mult* aInX * xaInM / tfreq;
+                double cross3 = 2*mult* aInX * xaInM / tfreq;
                 
                 if(cross3>0){
                     sum +=cross3;
@@ -461,10 +431,6 @@ void World::calcTotalNoRecPairs (){
         double tfreq= worldData->freq.at(target->second);
         
         RCDBG("Target = "<<tS<<tA)
-//changde////////////////////////////////////////////////////////////////////////
-//cout << "Target = "<<tS<<"\t"<<tA<<"\t";
-//changde////////////////////////////////////////////////////////////////////////
-
         double sum =0;
         if(tfreq>0){
             Context x(tpop, 0, tA);
@@ -543,7 +509,7 @@ void World::calcTotalNoRecPairs (){
                 r_carr= target->first;
                 l_carr= target->first;
                 
-                double cross3 = mult* aInX * xaInM / tfreq;
+                double cross3 = 2*mult* aInX * xaInM / tfreq;
                                 if(cross3>0){
                                     sum +=cross3;
 worldData->NoRecParents.at(target->second)[sum]=make_pair(l_carr, r_carr);
@@ -593,11 +559,11 @@ void World::siteAfreqUpdate(){
             size=0;
         }
         else if(siteA==0 && Sexsite==1) {
-            size=  worldData->myYnumbRatio *(double)worldData->popSize.at(popID);
+            size=  0.25 *(double)worldData->popSize.at(popID);
         }
         
         else if(siteA==0 && Sexsite==0) {
-            size= worldData->myYnumbRatio * (double)worldData->popSize.at(popID);
+            size= 0.75 * (double)worldData->popSize.at(popID);
         }
         
         worldData->nChromos[iter->second] = size ;
@@ -605,6 +571,8 @@ void World::siteAfreqUpdate(){
         
     }
 }
+
+
 void World::yAgefreqUpdate(){
     // This function will set to zero the sizes (and frequencies) of Contexts with Y in the SDR (sexsite=1)
     // It leads to autosomes with balanced polymorphism A1=1-preY_afreq, X=preY_afreq)

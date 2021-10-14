@@ -36,7 +36,7 @@ using boost::math::binomial_coefficient;
 //		Recombination is done with interference:  there's a maximum of one recombination event per chromosome.
 
 
-int World::simulateGeneration(vector < vector <double> > & mig_prob){
+int World::simulateGeneration(double recombinationRate, vector < vector <double> > & mig_prob){
     //
     // this function calculates the rates of events per generation,
     // then determines which event happened
@@ -94,7 +94,7 @@ int World::simulateGeneration(vector < vector <double> > & mig_prob){
             
             if(k > 1){														// calculates coalescence rates for each context
                 unsigned int a=2;
-                double ka= binomial_coefficient<double>(k,a)/clustSize;
+                double ka= binomial_coefficient<double>(k,a)/(clustSize*worldData->scaling_factors.at(worldData->current_epoch)); // Modified for epoch pop size
                 cRate.push_back( ka );
                 totalC += ka;
                 
@@ -103,7 +103,7 @@ int World::simulateGeneration(vector < vector <double> > & mig_prob){
             
             for(int carrierID = 0; carrierID < k; ++carrierID){				// calculates recombination rates for each carrier
                 
-                double seg = sexToARange * worldData->totalRecPairs.at(clustID);
+                double seg = worldData->scaling_factors.at(worldData->current_epoch)*sexToARange *recombinationRate * worldData->totalRecPairs.at(clustID); // Modified for epoch pop size
                 
                 rRate.push_back( seg  );
                 totalR += seg;
@@ -115,7 +115,7 @@ int World::simulateGeneration(vector < vector <double> > & mig_prob){
                 double totLength= worldData->carriers->at(clustID).at(carrierID)->getTotalLength(worldData->Sexsite_pos,worldData->siteA_pos);
                 
                 double outLength=totLength-sexToARange;
-                double seg = outLength * worldData->totalNoRecPairs.at(clustID);
+                double seg = worldData->scaling_factors.at(worldData->current_epoch)*outLength *recombinationRate * worldData->totalNoRecPairs.at(clustID); // Modified for epoch pop size
                 
                 uRate.push_back( seg  );
                 totalU += seg;
@@ -137,6 +137,18 @@ int World::simulateGeneration(vector < vector <double> > & mig_prob){
     else if (Rate==0) waiting_t = worldData->ages[0]; //	
 	double kingman= randreal(0,1);
 	
+	// Here, we check if the waiting time would advance us to the next epoch. If so, we reset waiting_t to the distance to next epoch, and then force no events to happen in the time period.
+	int epoSwitch = 0;
+	if(checkEpoch(waiting_t) == 1){
+		epoSwitch = 1;
+		waiting_t = worldData->epoch_breaks.at(worldData->current_epoch) - (worldData->generation);
+		totalM = 0;
+		totalC = 0;
+		totalR = 0;
+		totalU = 0;
+		//cout<<"Epoch Changed\n";
+		worldData->current_epoch += 1;
+	}
 
 	switch (timePeriod(waiting_t)) {
 		case 0:
@@ -229,6 +241,20 @@ int World::simulateGeneration(vector < vector <double> > & mig_prob){
 	}
     
   	return nEvents;
+}
+
+int World::checkEpoch(double waiting){
+	int epoSwitch = 0;
+	double t = waiting + worldData->generation;
+	double nextBreak = t+1;
+	if((worldData->nEpochs-1) != (worldData->current_epoch)){
+		nextBreak = worldData->epoch_breaks.at(worldData->current_epoch);
+	}
+	if( t > nextBreak){
+		epoSwitch = 1;
+	}
+
+	return epoSwitch;
 }
 
 int World::timePeriod(double waiting){
@@ -363,8 +389,7 @@ int World::coalesceEvent(vector<double>& rate, double total)
 		double myBefore = chrom->getTotalSegLength() + chrom2->getTotalSegLength();
 			
 		chrom->merge( chrom2 , newNode); // merging includes setting decendant to new ARGNode.
-
-						
+					
 		worldData->LeftTotalSegSize -= (myBefore - chrom->getTotalSegLength() );
 //cout << "total segs after " << worldData->LeftTotalSegSize  <<" "<< chrom->getTotalSegLength() <<" "<< chrom2->getTotalSegLength() << endl;	
 		worldData->carriers->at(c).erase(remove(worldData->carriers->at(c).begin(), worldData->carriers->at(c).end(), chrom2), worldData->carriers->at(c).end());
