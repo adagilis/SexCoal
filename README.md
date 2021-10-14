@@ -16,7 +16,7 @@ c++ *.cpp -o SaSimSnps
 
 # Parameters necessary to run the code
 
-The compiled code takes a single parameter - an integer $n$ which determines the parameter file called $inputn$.
+The compiled code takes a single parameter - an integer *n* which determines the parameter file called *my.model.inputn*.
 
 The parameter file consists of the following lines
 
@@ -45,12 +45,61 @@ Chromosomes sampled, each listed as "a b c", where a=0 or 1, for population 0 or
 For example, the below is a parameter file to simulate 14 X and 14 Y chromosomes of the Japan Sea stickleback, with a sweep on the Y 306000 generations ago.
 
 ```
-
+1
+138604
+0.01
+0.002
+0
+7
+3000 30000 50000 100000 150000 306000
+1.0 0.81 0.7 0.49 0.34 0.17 0.7
+0 306000
+0
+260
+1.0
+0
+0
+0
+0.001
+2
+0.1 500
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 1 0
+0 1 0
+0 1 0
+0 1 0
+0 1 0
+0 1 0
+0 1 0
+0 1 0
+0 1 0
+0 1 0
+0 1 0
+0 1 0
+0 1 0
+0 1 0
 ```
 
 
-If the above file is named input1, you can then run the code simply by running:
+If the above file is named my.model.input1, you can then run the code simply by running:
 
 ```
 SaSimSnps 1
 ```
+
+The output will be a file name *my.model.outputn*
+Each line of the output will be a single polymorphic site, with its location (in rho) as the first column, and its genotype (0 or 1) for all the specified chromosomes as the next columns.
+
